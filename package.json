@@ -1,0 +1,29 @@
+{
+  "name": "dlz-backend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "DLZ Delivery Hub — Backend NestJS",
+  "scripts": {
+    "dev": "pnpm --filter api dev",
+    "build": "pnpm --filter api build",
+    "typecheck": "pnpm --filter api exec tsc --noEmit -p tsconfig.json --incremental false",
+    "tsc": "pnpm typecheck",
+    "start": "pnpm --filter api start:prod",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter api test:e2e",
+    "db:generate": "pnpm --filter @dlz/prisma generate",
+    "db:migrate": "pnpm --filter @dlz/prisma migrate:dev",
+    "db:migrate:prod": "pnpm --filter @dlz/prisma migrate:deploy",
+    "db:studio": "pnpm --filter @dlz/prisma studio",
+    "db:seed": "pnpm --filter @dlz/prisma seed",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f api",
+    "event-bus:replay-dlq": "pnpm --filter api event-bus:replay-dlq"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
