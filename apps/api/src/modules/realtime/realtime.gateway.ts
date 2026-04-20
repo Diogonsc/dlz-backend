@@ -24,6 +24,18 @@ type OrderRealtimeBusPayload = {
   correlationId?: string | null;
 };
 
+type TabRow = { id: string; tenantId: string; status: string };
+
+function buildTabsUpdatedPayload(tab: TabRow) {
+  const status: 'open' | 'closed' = tab.status === 'closed' ? 'closed' : 'open';
+  return {
+    type: 'tabs.updated' as const,
+    storeId: tab.tenantId,
+    tabId: tab.id,
+    status,
+  };
+}
+
 @WebSocketGateway({
   cors: { origin: '*', credentials: true },
   namespace: '/realtime',
@@ -139,7 +151,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   @OnEvent('tab.created')
   handleTabCreated(payload: { tab: unknown; tenantId: string; correlationId?: string | null }) {
     const { tab, tenantId, correlationId } = payload;
-    this.server.to(`tenant:${tenantId}`).emit('tabs:updated', { event: 'INSERT', new: tab });
+    const t = tab as TabRow;
+    this.server.to(`tenant:${tenantId}`).emit('tabs:updated', buildTabsUpdatedPayload(t));
     this.structured.log({
       type: 'realtime',
       socketEvent: 'tabs:updated',
@@ -152,7 +165,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   @OnEvent('tab.updated')
   handleTabUpdated(payload: { tab: unknown; tenantId: string; correlationId?: string | null }) {
     const { tab, tenantId, correlationId } = payload;
-    this.server.to(`tenant:${tenantId}`).emit('tabs:updated', { event: 'UPDATE', new: tab });
+    const t = tab as TabRow;
+    this.server.to(`tenant:${tenantId}`).emit('tabs:updated', buildTabsUpdatedPayload(t));
     this.structured.log({
       type: 'realtime',
       socketEvent: 'tabs:updated',

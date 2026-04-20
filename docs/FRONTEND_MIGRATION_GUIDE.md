@@ -18,10 +18,13 @@ para o endpoint equivalente no backend NestJS.
 | `manage-domain` | POST | `/api/v1/domains/manage` | Body: `{ action, domain }` |
 | `send-otp` | POST | `/api/v1/otp/send` | Body: `{ phone }` — retorna `{ code }` |
 | `mercadopago-create-preference` | POST | `/api/v1/payments/mercadopago/preference` | JWT obrigatório |
-| `ifood-auth` | POST | `/api/v1/ifood/auth` (GET) ou `/api/v1/ifood/status` | action: refresh/test |
-| `ifood-order-sync` | POST | `/api/v1/ifood/sync-order` | Body: `{ order_id, store_id }` |
-| `winback-scheduler` | POST | `/api/v1/jobs/winback/trigger` | Dispara manualmente |
-| `reoptimize-storage-image` | POST | `/api/v1/storage/reoptimize` | Body: `{ bucket, objectPath }` |
+| `ifood-auth` (URL OAuth) | GET | `/api/v1/ifood/auth` | JWT — retorno `{ url }` |
+| `ifood-auth` (refresh token) | POST | `/api/v1/ifood/auth/refresh` | JWT — preferido |
+| `ifood-auth` (testar token) | POST | `/api/v1/ifood/auth/test` | JWT — preferido |
+| `ifood-auth` (legado) | POST | `/api/v1/ifood/auth-action` | Body `{ "action": "refresh" \| "test" }` |
+| `ifood-order-sync` | POST | `/api/v1/ifood/sync-order` | JWT — body: `{ "order_id", "new_status", "store_id"?: }` |
+| `winback-scheduler` | POST | `/api/v1/winback/send` | Disparo manual (fila interna continua em `JobsModule`) |
+| `reoptimize-storage-image` | — | **Não implementado** | Não existe rota; tratar no frontend ou nova issue |
 | `pwa-manifest` | GET | `/api/v1/pwa/manifest?store_id=` | Retorna webmanifest |
 | `send-tenant-push` | POST | `/api/v1/push/send` | Body: `{ title, body, url }` |
 
@@ -33,8 +36,8 @@ para o endpoint equivalente no backend NestJS.
 |---|---|---|
 | `resolve_store_slug(slug)` | GET | `/api/v1/rpc/resolve-store?slug=X` |
 | `resolve_store_by_host(host)` | GET | `/api/v1/rpc/resolve-store?host=X` |
-| `get_public_store_config(store_id)` | GET | `/api/v1/rpc/store-config?store_id=X` |
-| `get_store_pix_config(store_id)` | GET | `/api/v1/rpc/pix-config?store_id=X` |
+| `get_public_store_config(store_id)` | GET | `/api/v1/rpc/store-config?store_id=X` (**`store_id` obrigatório**) |
+| `get_store_pix_config(store_id)` | GET | `/api/v1/rpc/pix-config?store_id=X` (**`store_id` obrigatório**) |
 | `get_tenant_plan_limits(tenant_id)` | GET | `/api/v1/rpc/plan-limits` (JWT) |
 | `can_create_resource(tenant_id, resource)` | GET | `/api/v1/rpc/can-create/:resource` (JWT) |
 | `get_customer_profile(phone)` | GET | `/api/v1/rpc/customer-profile?phone=X` |
@@ -89,14 +92,35 @@ socket.emit('join:store', tenantId)
 socket.on('order:updated', handler)
 ```
 
-### Tabs realtime (tabs-realtime hook):
-O frontend faz `supabase.channel('tabs-realtime-${storeId}').on('postgres_changes', { table: 'tabs' })`.
-No backend, adicione ao `RealtimeGateway` um emit de `tabs:updated` quando tabs mudam — veja
-`REALTIME_TABS_PENDING.md` para a implementação.
+### Tabs realtime (`tabs:updated`)
+
+O servidor emite o evento Socket.io **`tabs:updated`** (namespace `/realtime`) com payload estável:
+
+```json
+{
+  "type": "tabs.updated",
+  "storeId": "<uuid do tenant>",
+  "tabId": "<uuid da comanda>",
+  "status": "open|closed"
+}
+```
+
+No frontend, invalide cache quando `payload.storeId` for a loja atual (não dependa de `payload.new`).
 
 ---
 
-## 4. Auth Supabase → JWT NestJS
+## 4. Envelope de resposta (opcional)
+
+Defina `API_RESPONSE_ENVELOPE=true` para receber sempre:
+
+- Sucesso: `{ "data": <corpo>, "error": null }`
+- Erro: `{ "data": null, "error": { "message": "...", "code": "..." } }`
+
+Sem essa variável, a API mantém o formato legado (`statusCode`, `message`, `correlationId`, etc.).
+
+---
+
+## 5. Auth Supabase → JWT NestJS
 
 | Operação | Antes | Depois |
 |---|---|---|
@@ -110,17 +134,18 @@ No backend, adicione ao `RealtimeGateway` um emit de `tabs:updated` quando tabs 
 
 ---
 
-## 5. Storage Supabase → S3/R2 NestJS
+## 6. Storage Supabase → S3/R2 NestJS
 
 | Operação | Antes | Depois |
 |---|---|---|
-| Upload imagem | `supabase.storage.from('bucket').upload(...)` | `POST /api/v1/storage/upload/:folder` |
+| Upload imagem | `supabase.storage.from('bucket').upload(...)` | `POST /api/v1/storage/upload/:folder` (multipart Fastify; primeiro arquivo do form) |
 | URL pública | `supabase.storage.from('bucket').getPublicUrl(...)` | URL direta do R2/S3 retornada no upload |
-| Reotimizar | `reoptimize-storage-image` Edge Function | `POST /api/v1/storage/reoptimize` |
+| Remover objeto | — | `DELETE /api/v1/storage/file?key=<key>` (URL-encode se necessário) |
+| Reotimizar | Edge Function | **Não implementado** nesta API |
 
 ---
 
-## 6. Estratégia de migração gradual
+## 7. Estratégia de migração gradual
 
 A Fase 6 implementa feature flags por tenant. O frontend pode verificar:
 
@@ -138,7 +163,7 @@ Assim a migração pode ser feita por tenant, módulo a módulo, sem downtime.
 
 ---
 
-## 7. PDV — Endpoints adicionados (análise final v3)
+## 8. PDV — Endpoints adicionados (análise final v3)
 
 ### Mesas (`restaurant_tables`)
 
@@ -196,13 +221,19 @@ supabase.channel(`tabs-realtime-${storeId}`)
 
 // Depois
 socket.on('tabs:updated', (payload) => {
-  if (payload.new?.store_id === storeId) qc.invalidateQueries(key)
+  if (payload.storeId === storeId) qc.invalidateQueries(key)
 })
 ```
 
 ---
 
-## 8. Schemas corrigidos (v3)
+## 9. Contratos TypeScript (referência)
+
+Arquivos em `apps/api/src/contracts/` descrevem rotas e tipos de alto nível (`auth`, `tabs`, `ifood`) para alinhar frontend e backend.
+
+---
+
+## 10. Schemas corrigidos (v3)
 
 - **`CashMovement`** — adicionados `store_id`, `payment_method`, `order_id`, `created_by`
 - **`WinbackLog`** — adicionados `customer_name`, `coupon_id`, `channel`, `campaign`, `segment` (alinhado ao schema real)

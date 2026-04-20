@@ -1,6 +1,3 @@
-// Adiciona endpoint POST /ifood/sync-order ao IfoodModule existente
-// Este arquivo é um patch — o controller principal está em ifood.module.ts
-
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '@dlz/prisma';
 

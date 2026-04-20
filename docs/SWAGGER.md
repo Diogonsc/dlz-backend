@@ -19,6 +19,11 @@ pnpm dev
 
 Depois, abra a documentação no navegador.
 
+## Resposta padronizada (opcional)
+
+Com `API_RESPONSE_ENVELOPE=true`, sucessos e erros HTTP seguem o envelope `{ data, error }`
+(veja `docs/FRONTEND_MIGRATION_GUIDE.md`). O padrao e **desligado** para nao quebrar integracoes antigas.
+
 ## Variaveis de ambiente do Swagger
 
 - `SWAGGER_ENABLED`: habilita/desabilita o Swagger explicitamente (`true`/`false`).

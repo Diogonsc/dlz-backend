@@ -9,6 +9,7 @@ import {
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import type { FastifyRequest } from 'fastify';
 import { getObservabilityContext } from '../observability/request-context.storage';
+import { isResponseEnvelopeEnabled } from '../http/response-envelope';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -26,6 +27,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Erro interno do servidor';
     let error = 'Internal Server Error';
+    let code = 'INTERNAL_ERROR';
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -36,8 +38,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const raw = (res as { message: unknown }).message;
         if (typeof raw === 'string') message = raw;
         else if (Array.isArray(raw)) message = raw.map(String).join(', ');
+        const maybeCode = (res as { code?: unknown }).code;
+        if (typeof maybeCode === 'string' && maybeCode.length > 0) code = maybeCode;
       }
       error = exception.name;
+      if (code === 'INTERNAL_ERROR' && status < 500) {
+        code = error.replace(/\s+/g, '_').toUpperCase();
+      }
       if (status >= 500) {
         this.logger.error(
           JSON.stringify({
@@ -57,10 +64,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         status = HttpStatus.CONFLICT;
         message = 'Registro duplicado';
         error = 'Conflict';
+        code = 'CONFLICT';
       } else if (exception.code === 'P2025') {
         status = HttpStatus.NOT_FOUND;
         message = 'Registro não encontrado';
         error = 'Not Found';
+        code = 'NOT_FOUND';
       } else {
         this.logger.error(
           JSON.stringify({
@@ -88,6 +97,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           path: request.url,
         }),
       );
+    }
+
+    if (isResponseEnvelopeEnabled()) {
+      response.status(status).send({
+        data: null,
+        error: { message, code },
+      });
+      return;
     }
 
     response.status(status).send({

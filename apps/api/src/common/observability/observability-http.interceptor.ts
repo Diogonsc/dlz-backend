@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
   HttpException,
+  Logger,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -45,8 +46,18 @@ function resolveUserIds(req: RequestWithUser): Pick<ObservabilityContext, 'tenan
 /**
  * Correlation ID + contexto ALS + log HTTP estruturado (ponta a ponta até publishers).
  */
+const INTEGRATION_ROUTE_PREFIXES = [
+  '/api/v1/auth',
+  '/api/v1/rpc',
+  '/api/v1/tabs',
+  '/api/v1/storage',
+  '/api/v1/ifood',
+] as const;
+
 @Injectable()
 export class ObservabilityHttpInterceptor implements NestInterceptor {
+  private readonly integrationLog = new Logger('Integration');
+
   constructor(private readonly structured: StructuredLoggerService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -94,6 +105,9 @@ export class ObservabilityHttpInterceptor implements NestInterceptor {
                   durationMs,
                   statusCode,
                 });
+                if (INTEGRATION_ROUTE_PREFIXES.some((p) => url.startsWith(p))) {
+                  this.integrationLog.log(`[API] ${method} ${url} -> ${statusCode} (user: ${userId ?? 'anon'})`);
+                }
               },
               error: (err: unknown) => {
                 const durationMs = Date.now() - started;

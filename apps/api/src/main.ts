@@ -7,10 +7,13 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { AppDomainExceptionFilter } from './common/filters/app-domain-exception.filter';
 import { RedisIoAdapter } from './modules/realtime/redis-io.adapter';
+import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { isResponseEnvelopeEnabled } from './common/http/response-envelope';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -37,6 +40,10 @@ async function bootstrap() {
     contentSecurityPolicy: nodeEnv === 'production',
   });
 
+  await app.getHttpAdapter().getInstance().register(multipart, {
+    limits: { fileSize: 10 * 1024 * 1024 },
+  });
+
   app.enableCors({
     origin: config.get<string>('FRONTEND_URL', 'http://localhost:5173'),
     credentials: true,
@@ -54,6 +61,10 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter(), new AppDomainExceptionFilter());
+
+  if (isResponseEnvelopeEnabled()) {
+    app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
+  }
 
   // ── Prefixo global ─────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1', { exclude: ['health', 'metrics'] });
