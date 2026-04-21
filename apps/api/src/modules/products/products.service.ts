@@ -102,15 +102,12 @@ export class ProductsService {
 
   private async checkPlanLimit(tenantId: string) {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
-    const plan = await this.prisma.plan.findFirst({ where: { slug: tenant!.plan } });
-    if (!plan) return;
-    const limit = await this.prisma.planLimit.findUnique({
-      where: { planId_limitKey: { planId: plan.id, limitKey: 'max_products' } },
-    });
-    if (!limit) return;
+    if (!tenant) return;
+    const plan = await this.prisma.plan.findFirst({ where: { slug: tenant.plan } });
+    if (!plan || plan.maxProducts < 0) return;
     const count = await this.prisma.product.count({ where: { tenantId } });
-    if (count >= limit.limitValue) {
-      throw new ForbiddenException(`Limite de ${limit.limitValue} produtos atingido para o seu plano`);
+    if (count >= plan.maxProducts) {
+      throw new ForbiddenException(`Limite de ${plan.maxProducts} produtos atingido para o seu plano`);
     }
   }
 

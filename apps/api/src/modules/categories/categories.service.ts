@@ -92,18 +92,12 @@ export class CategoriesService {
       where: { id: tenantId },
       select: { plan: true },
     });
-    const limit = await this.prisma.planLimit.findUnique({
-      where: {
-        planId_limitKey: {
-          planId: (await this.prisma.plan.findFirst({ where: { slug: tenant!.plan } }))!.id,
-          limitKey: 'max_categories',
-        },
-      },
-    });
-    if (!limit) return;
+    if (!tenant) return;
+    const plan = await this.prisma.plan.findFirst({ where: { slug: tenant.plan } });
+    if (!plan || plan.maxCategories < 0) return;
     const count = await this.prisma.category.count({ where: { tenantId } });
-    if (count >= limit.limitValue) {
-      throw new ForbiddenException(`Limite de ${limit.limitValue} categorias atingido para o seu plano`);
+    if (count >= plan.maxCategories) {
+      throw new ForbiddenException(`Limite de ${plan.maxCategories} categorias atingido para o seu plano`);
     }
   }
 

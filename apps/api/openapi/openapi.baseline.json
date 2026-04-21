@@ -1,0 +1,9 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DLZ Delivery Hub API — baseline CI (oasdiff)",
+    "description": "Baseline versionado para detecção de breaking changes. Atualize com `pnpm openapi:baseline:update` após export real (`openapi.generated.json`) quando o contrato for intencionalmente revisto.",
+    "version": "1.0.0"
+  },
+  "paths": {}
+}

@@ -22,6 +22,7 @@ CMD ["pnpm", "--filter", "api", "dev"]
 FROM deps AS builder
 COPY . .
 RUN pnpm --filter @dlz/prisma generate
+RUN pnpm --filter @dlz/prisma run build
 RUN pnpm --filter api build
 
 # ── Production ────────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ COPY packages/shared/package.json ./packages/shared/
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/packages/prisma/dist ./packages/prisma/dist
 COPY --from=builder /app/packages/prisma/src ./packages/prisma/src
 COPY --from=builder /app/packages/shared/src ./packages/shared/src
 

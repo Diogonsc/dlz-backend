@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import Redis from 'ioredis';
@@ -10,6 +10,9 @@ import { SendWinbackMessageUseCase } from '../../application/use-cases/send-winb
 import { TerminalExternalError, TransientExternalError } from '../../domain/errors/notification.errors';
 
 const WINBACK_PROCESSOR_CONCURRENCY = Number.parseInt(process.env.WINBACK_CONCURRENCY ?? '5', 10);
+
+/** Token para Redis opcional em testes; em produção o processor instancia Redis a partir de APP_CONFIG. */
+export const WINBACK_NOTIFICATIONS_REDIS = 'WINBACK_NOTIFICATIONS_REDIS';
 
 @Injectable()
 @Processor('winback-notifications', {
@@ -24,7 +27,7 @@ export class WinbackNotificationsProcessor extends WorkerHost implements OnModul
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly sendWinback: SendWinbackMessageUseCase,
     private readonly structured: StructuredLoggerService,
-    redisClient?: Pick<Redis, 'incr' | 'expire' | 'quit'>,
+    @Optional() @Inject(WINBACK_NOTIFICATIONS_REDIS) redisClient?: Pick<Redis, 'incr' | 'expire' | 'quit'>,
   ) {
     super();
     this.redis = redisClient ?? new Redis(this.config.redis.url, { maxRetriesPerRequest: null });

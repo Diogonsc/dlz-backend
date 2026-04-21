@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -67,6 +68,21 @@ import { TabsModule } from './modules/tabs/tabs.module';
 import { CashModule } from './modules/cash/cash.module';
 import { WinbackModule } from './modules/winback/winback.module';
 
+/** Caminhos absolutos para `.env` — `pnpm dev` na raiz do monorepo não usa `apps/api` como cwd. */
+function resolveEnvFilePaths(): string[] {
+  const apiRoot = join(__dirname, '..');
+  const repoRoot = join(__dirname, '..', '..', '..');
+  const cwd = process.cwd();
+  return [
+    join(repoRoot, '.env'),
+    join(repoRoot, '.env.local'),
+    join(apiRoot, '.env'),
+    join(apiRoot, '.env.local'),
+    join(cwd, '.env'),
+    join(cwd, '.env.local'),
+  ];
+}
+
 @Module({
   imports: [
     ObservabilityModule,
@@ -74,7 +90,7 @@ import { WinbackModule } from './modules/winback/winback.module';
       isGlobal: true,
       load: [appConfigFactory],
       validate: validateEnv,
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: resolveEnvFilePaths(),
     }),
     AppConfigModule,
     EventBusModule,

@@ -75,6 +75,17 @@ export const envSchema = z.object({
     10,
     'must be >= 10s',
   ),
+
+  /** S3 / R2 / MinIO — opcionais; em `development` sem credenciais usa disco local (`var/local-storage`). */
+  STORAGE_ENDPOINT: z.string().optional(),
+  STORAGE_BUCKET: z.string().optional(),
+  STORAGE_ACCESS_KEY: z.string().optional(),
+  STORAGE_SECRET_KEY: z.string().optional(),
+  STORAGE_PUBLIC_URL: z.string().optional(),
+  STORAGE_REGION: z.string().optional(),
+  /** `local` = disco; `s3` = obriga credenciais mesmo em dev. */
+  STORAGE_BACKEND: z.string().optional(),
+  LOCAL_STORAGE_DIR: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

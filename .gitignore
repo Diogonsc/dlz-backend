@@ -21,3 +21,13 @@ Thumbs.db
 
 .idea/
 .vscode/
+
+# OpenAPI exportado localmente / CI (regenerado; baseline versionado fica em apps/api/openapi/openapi.baseline.json)
+apps/api/openapi/openapi.generated.json
+
+# SDK gerado pelo Orval (fonte: openapi.generated.json)
+frontend/src/api/generated/
+
+# Uploads locais (STORAGE sem S3 em development)
+apps/api/var/local-storage/
+var/local-storage/

@@ -1,21 +1,54 @@
 import { Module } from '@nestjs/common';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PrismaService } from '@dlz/prisma';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
-import { IsString, IsOptional, IsNumber, IsBoolean, IsArray, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
+import {
+  ApiJsonCreatedResponse,
+  ApiJsonOkResponse,
+  ApiStandardErrorResponses,
+} from '../../common/swagger/http-responses.decorators';
 
 class CreatePlanDto {
-  @IsString() name: string;
-  @IsString() slug: string;
-  @IsOptional() @IsString() description?: string;
-  @IsNumber() price: number;
-  @IsOptional() @IsString() stripePriceId?: string;
-  @IsOptional() @IsString() caktoPriceId?: string;
-  @IsOptional() @IsArray() features?: string[];
-  @IsOptional() @IsNumber() sortOrder?: number;
+  @ApiProperty({ example: 'Plano Pro' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 'pro' })
+  @IsString()
+  slug: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: 99.9 })
+  @IsNumber()
+  price: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  stripePriceId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  caktoPriceId?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  features?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
 }
 
 @Injectable()
@@ -26,14 +59,12 @@ class PlansService {
     return this.prisma.plan.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
-      include: { limits: true },
     });
   }
 
   async findAllAdmin() {
     return this.prisma.plan.findMany({
       orderBy: { sortOrder: 'asc' },
-      include: { limits: true },
     });
   }
 
@@ -59,42 +90,54 @@ class PlansController {
 
   @Get()
   @ApiOperation({ summary: 'Lista planos ativos (público — landing page)' })
+  @ApiStandardErrorResponses({ omitJwtErrorResponses: true })
+  @ApiJsonOkResponse({ description: 'Planos ativos com limites' })
   findAll() {
     return this.plansService.findAll();
   }
 
   @Get('admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'platform_owner')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista todos os planos (owner da plataforma)' })
+  @ApiStandardErrorResponses()
+  @ApiJsonOkResponse({ description: 'Todos os planos (inclui inativos)' })
   findAllAdmin() {
     return this.plansService.findAllAdmin();
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'platform_owner')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria plano' })
+  @ApiStandardErrorResponses({ conflict: true })
+  @ApiJsonCreatedResponse({ description: 'Plano criado' })
   create(@Body() dto: CreatePlanDto) {
     return this.plansService.create(dto);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'platform_owner')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza plano' })
+  @ApiStandardErrorResponses({ notFound: true })
+  @ApiJsonOkResponse({ description: 'Plano atualizado' })
+  @ApiParam({ name: 'id', required: true, type: String })
   update(@Param('id') id: string, @Body() dto: Partial<CreatePlanDto>) {
     return this.plansService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'platform_owner')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Desativa plano' })
+  @ApiStandardErrorResponses({ notFound: true })
+  @ApiJsonOkResponse({ description: 'Plano marcado como inativo' })
+  @ApiParam({ name: 'id', required: true, type: String })
   remove(@Param('id') id: string) {
     return this.plansService.remove(id);
   }

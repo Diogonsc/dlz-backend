@@ -4,6 +4,11 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { TenantId } from '../../../../common/decorators/current-user.decorator';
 import { DomainsService } from '../../application/services/domains.service';
 import { ManageDomainDto } from '../dtos/manage-domain.dto';
+import {
+  ApiJsonOkResponse,
+  ApiStandardErrorResponses,
+} from '../../../../common/swagger/http-responses.decorators';
+import { DomainManageOperationResponseDto, DomainTenantStatusResponseDto } from '../dtos/domains-response.dto';
 
 @ApiTags('domains')
 @ApiBearerAuth()
@@ -13,14 +18,21 @@ export class DomainsController {
   constructor(private readonly domainsService: DomainsService) {}
 
   @Get('status')
-  @ApiOperation({ summary: 'Status do domínio da loja (subdomain + custom domain)' })
+  @ApiOperation({ operationId: 'domainsStatus', summary: 'Status do domínio da loja (subdomain + custom domain)' })
+  @ApiStandardErrorResponses()
+  @ApiJsonOkResponse({ type: DomainTenantStatusResponseDto, description: 'Estado DNS / Vercel' })
   status(@TenantId() tenantId: string) {
     return this.domainsService.getStatus(tenantId);
   }
 
   @Post('manage')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Gerencia domínio customizado via Vercel API (add/remove/verify)' })
+  @ApiOperation({
+    operationId: 'domainsManage',
+    summary: 'Gerencia domínio customizado via Vercel API (add/remove/verify)',
+  })
+  @ApiStandardErrorResponses()
+  @ApiJsonOkResponse({ type: DomainManageOperationResponseDto, description: 'Resultado da operação solicitada' })
   manage(@TenantId() tenantId: string, @Body() dto: ManageDomainDto) {
     return this.domainsService.manage(tenantId, dto.action, dto.domain);
   }

@@ -11,6 +11,8 @@ export class UpdateStoreDto {
   @IsOptional() @IsString() slug?: string;
   @IsOptional() @IsString() banner?: string;
   @IsOptional() @IsString() avatar?: string;
+  @IsOptional() @IsString() primaryColor?: string;
+  @IsOptional() @IsString() accentColor?: string;
   @IsOptional() @IsNumber() deliveryFee?: number;
   @IsOptional() @IsNumber() minOrder?: number;
   @IsOptional() @IsString() deliveryTime?: string;

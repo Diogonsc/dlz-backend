@@ -1,0 +1,27 @@
+OpenAPI / contrato
+==================
+
+1. Snapshot mínimo (validação rápida de parser):
+   pnpm openapi:validate
+   (usa `openapi/openapi.snapshot.json` por padrão.)
+
+2. Export **real** com a API no ar (na raiz do monorepo):
+   curl -sS "http://localhost:3333/docs/json" -o apps/api/openapi/openapi.generated.json
+   ou: `pnpm openapi:export` (aguarda a URL em `OPENAPI_EXPORT_URL`, default `http://127.0.0.1:3333/docs/json`).
+   O arquivo `openapi.generated.json` está no `.gitignore` (gerado localmente/CI); versionamos o baseline para oasdiff.
+
+3. Validar o export:
+   pnpm openapi:validate:generated
+
+4. Geração de SDK (Orval → `frontend/src/api/generated/`):
+   pnpm codegen:orval
+   (requer `openapi.generated.json` presente.)
+
+5. Baseline para oasdiff no CI:
+   - Arquivo: `openapi/openapi.baseline.json`
+   - Após revisar o contrato exportado: `pnpm openapi:baseline:update` (copia `openapi.generated.json` → baseline).
+
+6. CI (`openapi.yml`):
+   - Job rápido: valida o snapshot.
+   - Job `live-contract`: sobe Postgres/Redis, `prisma db push` (schema completo em DB vazio), build, API, exporta `/docs/json`, valida, `oasdiff breaking` vs baseline, roda Orval.
+   - Variáveis fixas no job: `OPENAPI_RESPONSE_SHAPE=envelope`, `OPENAPI_ERROR_SHAPE=envelope` (OpenAPI sem `oneOf` de sucesso/erro dual).

@@ -1,6 +1,13 @@
 import { Controller, Get, Post, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { MetaWhatsAppWebhookDto } from './dto/meta-webhook.dto';
+import {
+  ApiJsonOkResponse,
+  ApiPublicEndpoint,
+  ApiStandardErrorResponses,
+} from '../../common/swagger/http-responses.decorators';
+import { StripeWebhookAckResponseDto } from '../../common/dtos/simple-contract.dto';
 
 @ApiTags('whatsapp')
 @Controller('whatsapp')
@@ -8,7 +15,18 @@ export class WhatsAppController {
   constructor(private readonly config: ConfigService) {}
 
   @Get('webhook')
-  @ApiOperation({ summary: 'Verificação do webhook Meta' })
+  @ApiPublicEndpoint()
+  @ApiOperation({ operationId: 'whatsappMetaWebhookVerify', summary: 'Verificação do webhook Meta (challenge em texto plano)' })
+  @ApiProduces('text/plain')
+  @ApiStandardErrorResponses({ omitJwtErrorResponses: true })
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna `hub.challenge` quando verificado; caso contrário texto "Forbidden"',
+    content: { 'text/plain': { schema: { type: 'string' } } },
+  })
+  @ApiQuery({ name: 'hub.mode', required: true, type: String, example: 'subscribe' })
+  @ApiQuery({ name: 'hub.verify_token', required: true, type: String })
+  @ApiQuery({ name: 'hub.challenge', required: true, type: String })
   verifyWebhook(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
@@ -23,10 +41,16 @@ export class WhatsAppController {
 
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Recebe mensagens do WhatsApp (Meta Cloud API)' })
-  receiveWebhook(@Body() body: any) {
-    // Aqui você pode processar mensagens recebidas dos clientes
-    // e integrar com o WhatsApp Bot (Fase 5)
+  @ApiPublicEndpoint()
+  @ApiOperation({
+    operationId: 'whatsappMetaWebhookReceive',
+    summary: 'Recebe mensagens do WhatsApp (Meta Cloud API)',
+    description: 'Payload segue o formato oficial Meta; campos variam por tipo de evento.',
+  })
+  @ApiStandardErrorResponses({ omitJwtErrorResponses: true })
+  @ApiJsonOkResponse({ type: StripeWebhookAckResponseDto, description: 'Ack de recebimento' })
+  @ApiBody({ type: MetaWhatsAppWebhookDto, description: 'Corpo JSON bruto enviado pela Meta' })
+  receiveWebhook(@Body() _body: object) {
     return { received: true };
   }
 }

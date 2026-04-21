@@ -1,0 +1,9 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DLZ Delivery Hub API — snapshot CI",
+    "description": "Substitua por export real de GET /docs/json (ou /{SWAGGER_PATH}/json). Este arquivo mínimo valida a cadeia openapi:validate no CI.",
+    "version": "1.0.0"
+  },
+  "paths": {}
+}

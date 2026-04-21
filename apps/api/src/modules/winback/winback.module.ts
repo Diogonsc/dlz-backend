@@ -1,11 +1,11 @@
 import { Module, Injectable } from '@nestjs/common';
 import { Controller, Get, Post, Body, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiQuery } from '@nestjs/swagger';
 import { InjectQueue, BullModule } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantId } from '../../common/decorators/current-user.decorator';
-import { IsArray, IsString, IsOptional } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsString, IsOptional } from 'class-validator';
 import { NotificationGatewayPort } from './domain/ports/notification-gateway.port';
 import { WinbackRepositoryPort } from './domain/ports/winback.repository.port';
 import { PrismaWinbackRepository } from './infrastructure/persistence/prisma-winback.repository';
@@ -14,10 +14,22 @@ import { SendWinbackMessageUseCase } from './application/use-cases/send-winback-
 import { WinbackNotificationsProcessor } from './infrastructure/queues/winback-notifications.processor';
 import { WinbackEventsHandler } from './application/handlers/winback-events.handler';
 import { getObservabilityContext } from '../../common/observability/request-context.storage';
+import {
+  ApiJsonOkResponse,
+  ApiStandardErrorResponses,
+} from '../../common/swagger/http-responses.decorators';
 
 class SendWinbackDto {
-  @IsArray() customerPhones: string[];
-  @IsOptional() @IsString() segment?: string;
+  @ApiProperty({ type: [String], example: ['+5511999999999'] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  customerPhones: string[];
+
+  @ApiPropertyOptional({ example: 'manual' })
+  @IsOptional()
+  @IsString()
+  segment?: string;
 }
 
 @Injectable()
@@ -70,12 +82,23 @@ class WinbackController {
 
   @Get('logs')
   @ApiOperation({ summary: 'Histórico de envios winback (substitui from("winback_logs").select)' })
+  @ApiStandardErrorResponses()
+  @ApiJsonOkResponse({ description: 'Logs recentes' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Máximo de registros retornados',
+    example: 100,
+  })
   getLogs(@TenantId() tenantId: string, @Query('limit') limit = 100) {
     return this.winbackService.getLogs(tenantId, +limit);
   }
 
   @Get('logs/monthly-count')
   @ApiOperation({ summary: 'Contagem de envios do mês atual' })
+  @ApiStandardErrorResponses()
+  @ApiJsonOkResponse({ description: 'Totais do mês corrente' })
   getMonthlyCount(@TenantId() tenantId: string) {
     return this.winbackService.getMonthlyCount(tenantId);
   }
@@ -83,6 +106,8 @@ class WinbackController {
   @Post('send')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Dispara winback para lista de telefones (substitui invoke winback-scheduler)' })
+  @ApiStandardErrorResponses()
+  @ApiJsonOkResponse({ description: 'Mensagens enfileiradas' })
   send(@TenantId() tenantId: string, @Body() dto: SendWinbackDto) {
     return this.winbackService.sendWinback(tenantId, dto);
   }

@@ -27,6 +27,7 @@ export const APP_CONFIG = Symbol('APP_CONFIG');
         winback: config.getOrThrow('winback'),
         eventBus: config.getOrThrow('eventBus'),
         paymentGatewayHealth: config.getOrThrow('paymentGatewayHealth'),
+        storage: config.getOrThrow('storage'),
       }),
     },
   ],

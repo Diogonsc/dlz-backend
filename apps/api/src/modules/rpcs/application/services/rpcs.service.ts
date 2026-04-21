@@ -1,14 +1,30 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@dlz/prisma';
+import { slugify } from '@dlz/shared';
 import { GetOrCreateOpenTabUseCase } from '../../../orders/application/use-cases/get-or-create-open-tab.use-case';
 import * as bcrypt from 'bcryptjs';
 import { normalizePhone } from '@dlz/shared';
 import {
+  AdminProvisionTenantDto,
   CreateStoreAdminDto,
   UpsertCustomerProfileDto,
   UpsertIfoodCredentialsDto,
   UpsertMpGatewayDto,
 } from '../../presentation/dtos/rpcs.dto';
+
+/** Evita `WHERE id = 'texto'` em coluna UUID — o Postgres gera erro e vira 500. */
+function isUuidString(value: string): boolean {
+  return /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value.trim());
+}
+
+/** Resolve slug/host para painel admin e integrações; inclui lojas inativas/pagamento pendente. */
+const RESOLVE_STORE_STATUSES = ['active', 'trial', 'inactive', 'pending_payment'] as const;
+
+/** Mesma chave para `boiburguer` (URL) e `boi-burguer` (slugify no banco). */
+function compactSlugKey(value: string): string {
+  return slugify(value.trim()).replace(/-/g, '');
+}
 
 @Injectable()
 export class RpcsService {
@@ -23,7 +39,7 @@ export class RpcsService {
       const byHost = await this.prisma.tenant.findFirst({
         where: {
           OR: [{ storeConfig: { customDomain: host } }, { subdomain }],
-          status: { in: ['active', 'trial'] },
+          status: { in: [...RESOLVE_STORE_STATUSES] },
         },
         select: { id: true, subdomain: true, status: true, trialEndsAt: true },
       });
@@ -31,13 +47,50 @@ export class RpcsService {
     }
 
     if (slug) {
-      const tenant = await this.prisma.tenant.findFirst({
+      const raw = slug.trim();
+      const s = raw.toLowerCase();
+      const or: Array<{
+        id?: string
+        url?: { contains: string; mode: 'insensitive' }
+        subdomain?: string | { equals: string; mode: 'insensitive' }
+        storeConfig?: { slug: string | { equals: string; mode: 'insensitive' } }
+      }> = [
+        { subdomain: { equals: s, mode: 'insensitive' } },
+        { storeConfig: { slug: { equals: s, mode: 'insensitive' } } },
+        { url: { contains: raw, mode: 'insensitive' } },
+      ];
+      if (isUuidString(raw)) {
+        or.unshift({ id: raw });
+      }
+      let tenant = await this.prisma.tenant.findFirst({
         where: {
-          OR: [{ id: slug }, { url: { contains: slug } }, { subdomain: slug.toLowerCase() }],
-          status: { in: ['active', 'trial'] },
+          OR: or,
+          status: { in: [...RESOLVE_STORE_STATUSES] },
         },
         select: { id: true },
       });
+
+      if (!tenant) {
+        const compact = compactSlugKey(raw);
+        if (compact.length >= 2) {
+          const rows = await this.prisma.$queryRaw<{ id: string }[]>(
+            Prisma.sql`
+              SELECT t.id::text AS id
+              FROM tenants t
+              LEFT JOIN store_config sc ON sc.store_id = t.id
+              WHERE t.status IN ('active', 'trial', 'inactive', 'pending_payment')
+                AND (
+                  regexp_replace(lower(trim(coalesce(t.subdomain, ''))), '[^a-z0-9]', '', 'g') = ${compact}
+                  OR regexp_replace(lower(trim(coalesce(sc.slug, ''))), '[^a-z0-9]', '', 'g') = ${compact}
+                )
+              LIMIT 1
+            `,
+          );
+          const hit = rows[0]?.id;
+          if (hit) tenant = { id: hit };
+        }
+      }
+
       if (!tenant) throw new NotFoundException('Loja não encontrada');
       return { id: tenant.id };
     }
@@ -57,9 +110,12 @@ export class RpcsService {
             id: true,
             status: true,
             plan: true,
+            planId: true,
             trialEndsAt: true,
             themePrimary: true,
             themeAccent: true,
+            /** Slug em `plans` — fonte de verdade quando `plan_id` está preenchido (enum `plan` pode estar defasado). */
+            planRef: { select: { slug: true } },
           },
         },
       },
@@ -83,11 +139,37 @@ export class RpcsService {
   async getTenantPlanLimits(tenantId: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { plan: true, planId: true },
+      select: {
+        plan: true,
+        planId: true,
+        planRef: {
+          select: { slug: true, maxProducts: true, maxCategories: true, maxCoupons: true },
+        },
+      },
     });
     if (!tenant) throw new NotFoundException('Tenant não encontrado');
 
-    const planKey = tenant.plan === 'agency' ? 'business' : tenant.plan;
+    const fromPlanRow = (row: { slug: string; maxProducts: number; maxCategories: number; maxCoupons: number }) => ({
+      plan: row.slug,
+      maxProducts: row.maxProducts < 0 ? 999999 : row.maxProducts,
+      maxCategories: row.maxCategories < 0 ? 999999 : row.maxCategories,
+      maxCoupons: row.maxCoupons < 0 ? 999999 : row.maxCoupons,
+    });
+
+    if (tenant.planRef) {
+      return fromPlanRow(tenant.planRef);
+    }
+
+    const planSlug = String(tenant.plan);
+    const bySlug = await this.prisma.plan.findFirst({
+      where: { slug: planSlug, isActive: true },
+      select: { slug: true, maxProducts: true, maxCategories: true, maxCoupons: true },
+    });
+    if (bySlug) {
+      return fromPlanRow(bySlug);
+    }
+
+    const planKey = tenant.plan === 'agency' ? 'business' : planSlug;
     const limit = await this.prisma.planLimit.findUnique({
       where: { plan: planKey },
     });
@@ -351,5 +433,50 @@ export class RpcsService {
     });
 
     return { id: user.id, email: user.email, mustChangePassword: true };
+  }
+
+  async adminProvisionTenant(callerUserId: string, dto: AdminProvisionTenantDto) {
+    const callerRole = await this.prisma.userRole.findFirst({
+      where: { userId: callerUserId, role: { in: ['admin', 'platform_owner'] } },
+    });
+    if (!callerRole) throw new ForbiddenException('Sem permissão de administrador');
+
+    const existing = await this.prisma.tenant.findUnique({ where: { userId: dto.userId } });
+    if (existing) throw new ConflictException('Usuário já possui loja');
+
+    const base = slugify(dto.name);
+    let subdomain = base || `loja-${dto.userId.slice(0, 8)}`;
+    let n = 0;
+    while (await this.prisma.tenant.findFirst({ where: { subdomain } })) {
+      n += 1;
+      subdomain = `${base}-${n}`;
+    }
+
+    const p = (dto.plan ?? 'starter').toLowerCase();
+    const planEnum = (p === 'pro' ? 'pro' : p === 'agency' ? 'agency' : 'starter') as 'starter' | 'pro' | 'agency';
+
+    return this.prisma.tenant.create({
+      data: {
+        name: dto.name,
+        owner: dto.owner,
+        email: dto.email.trim().toLowerCase(),
+        phone: dto.phone?.trim() ?? '',
+        plan: planEnum,
+        planId: dto.planId,
+        status: (dto.status as 'active' | 'trial' | 'inactive' | 'pending_payment') ?? 'trial',
+        trialEndsAt: dto.trialEndsAt ? new Date(dto.trialEndsAt) : undefined,
+        userId: dto.userId,
+        url: base || subdomain,
+        subdomain,
+        since: new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+        storeConfig: {
+          create: {
+            storeName: dto.name,
+            slug: subdomain,
+          },
+        },
+      },
+      include: { storeConfig: true },
+    });
   }
 }

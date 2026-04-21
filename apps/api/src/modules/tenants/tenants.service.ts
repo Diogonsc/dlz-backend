@@ -27,7 +27,7 @@ export class TenantsService {
 
   async findAll() {
     return this.prisma.tenant.findMany({
-      include: { storeConfig: true, _count: { select: { orders_rel: true } } },
+      include: { storeConfig: true, _count: { select: { ordersRel: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }

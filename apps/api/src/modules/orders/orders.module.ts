@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PrismaService } from '@dlz/prisma';
 import { OrdersController } from './presentation/controllers/orders.controller';
 import { OrdersRepositoryPort } from './domain/ports/orders.repository.port';
 import { OrderEventPublisherPort } from './domain/ports/order-event.publisher.port';
@@ -16,7 +17,12 @@ import { PrismaOrderTransactionRunner } from './infrastructure/persistence/prism
 @Module({
   controllers: [OrdersController],
   providers: [
-    { provide: OrdersRepositoryPort, useClass: PrismaOrdersRepository },
+    {
+      provide: OrdersRepositoryPort,
+      /** `useFactory`: construtor usa `PrismaService | TransactionClient` — união vira `Object` no metadata do Nest. */
+      useFactory: (prisma: PrismaService) => new PrismaOrdersRepository(prisma),
+      inject: [PrismaService],
+    },
     { provide: OrderEventPublisherPort, useClass: NestOrderEventPublisher },
     { provide: OrderTransactionRunnerPort, useClass: PrismaOrderTransactionRunner },
     CreateOrderUseCase,

@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UpsertCustomerProfileDto {
   @IsString()
@@ -71,6 +71,41 @@ export class CreateStoreAdminDto {
   @IsOptional()
   @IsString()
   name?: string;
+}
+
+/** POST rpc/admin-provision-tenant — cria tenant + store_config para um userId (painel owner). */
+export class AdminProvisionTenantDto {
+  @IsUUID()
+  userId!: string;
+
+  @IsString()
+  name!: string;
+
+  @IsString()
+  owner!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  plan?: string;
+
+  @IsOptional()
+  @IsUUID()
+  planId?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  trialEndsAt?: string | null;
 }
 
 export class GetOrCreateTabDto {

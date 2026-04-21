@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { hostname } from 'node:os';
 import Redis from 'ioredis';
@@ -29,6 +29,9 @@ export class MercadoPagoHealthCronService implements OnModuleDestroy {
     private readonly healthService: PaymentGatewayHealthService,
     private readonly validateUseCase: ValidateMercadoPagoCredentialsUseCase,
     private readonly structured: StructuredLoggerService,
+    /** Só para testes; em runtime o Nest injeta `undefined` e usamos `new Redis(...)`. */
+    @Optional()
+    @Inject('MERCADOPAGO_HEALTH_CRON_REDIS')
     redisClient?: Pick<Redis, 'set' | 'quit'>,
   ) {
     const redisCfg = this.config.redis;

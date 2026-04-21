@@ -10,6 +10,12 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import type { FastifyRequest } from 'fastify';
 import { getObservabilityContext } from '../observability/request-context.storage';
 import { isResponseEnvelopeEnabled } from '../http/response-envelope';
+import { isUnifiedApiErrorBodyEnabled } from '../http/api-error-format';
+import { normalizeHttpErrorCode } from '../http/error-code.util';
+
+function useEnvelopeErrorBody(): boolean {
+  return isResponseEnvelopeEnabled() || isUnifiedApiErrorBodyEnabled();
+}
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -28,6 +34,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let message = 'Erro interno do servidor';
     let error = 'Internal Server Error';
     let code = 'INTERNAL_ERROR';
+    let details: unknown | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -40,6 +47,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         else if (Array.isArray(raw)) message = raw.map(String).join(', ');
         const maybeCode = (res as { code?: unknown }).code;
         if (typeof maybeCode === 'string' && maybeCode.length > 0) code = maybeCode;
+        const maybeDetails = (res as { details?: unknown }).details;
+        if (maybeDetails !== undefined) details = maybeDetails;
       }
       error = exception.name;
       if (code === 'INTERNAL_ERROR' && status < 500) {
@@ -99,10 +108,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
-    if (isResponseEnvelopeEnabled()) {
+    code = normalizeHttpErrorCode(status, code);
+
+    if (useEnvelopeErrorBody()) {
       response.status(status).send({
         data: null,
-        error: { message, code },
+        error: {
+          message,
+          code,
+          ...(details !== undefined ? { details } : {}),
+          correlationId,
+        },
       });
       return;
     }

@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  /** Relativo a `packages/prisma/` → raiz do monorepo (`../../node_modules`). `../node_modules` apontava para `packages/node_modules` e o client não batia com o `@prisma/client` do pnpm. */
+  output   = "../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -224,6 +225,7 @@ model Tenant {
   ifoodLogs         IfoodLog[]
   winbackCoupons    WinbackCoupon[]
   winbackLogs       WinbackLog[]
+  winbackMessages   WinbackMessage[]
   paymentGateways   PaymentGateway[]
   mercadopagoLogs   MercadopagoLog[]
   whatsappContacts  WhatsappContact[]

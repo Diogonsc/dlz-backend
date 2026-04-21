@@ -1,0 +1,136 @@
+name: OpenAPI
+
+on:
+  push:
+    paths:
+      - 'apps/api/**'
+      - 'packages/prisma/**'
+      - 'frontend/src/api/**'
+      - '.github/workflows/openapi.yml'
+      - 'orval.config.cjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'packages/prisma/**'
+      - 'frontend/src/api/**'
+      - '.github/workflows/openapi.yml'
+      - 'orval.config.cjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  validate-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate OpenAPI snapshot
+        run: pnpm openapi:validate
+
+  live-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dlz
+          POSTGRES_PASSWORD: dlz_secret
+          POSTGRES_DB: dlz_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dlz -d dlz_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    env:
+      NODE_ENV: test
+      OPENAPI_RESPONSE_SHAPE: envelope
+      OPENAPI_ERROR_SHAPE: envelope
+      DATABASE_URL: postgresql://dlz:dlz_secret@localhost:5432/dlz_db
+      REDIS_URL: redis://localhost:6379
+      API_URL: http://127.0.0.1:3333
+      FRONTEND_URL: http://127.0.0.1:5173
+      JWT_SECRET: '01234567890123456789012345678901'
+      JWT_REFRESH_SECRET: '01234567890123456789012345678902'
+      SWAGGER_ENABLED: 'true'
+      SWAGGER_PATH: docs
+      PORT: '3333'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate + db push (schema completo no Postgres vazio)
+        run: pnpm db:generate && pnpm --filter @dlz/prisma exec prisma db push --skip-generate --accept-data-loss
+
+      - name: Build API
+        run: pnpm build
+
+      - name: Start API (background)
+        run: |
+          pnpm --filter api start:prod &
+          for i in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:3333/health" >/dev/null 2>&1; then
+              echo "API pronta"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Timeout aguardando /health"
+          exit 1
+
+      - name: Export OpenAPI (GET /docs/json)
+        run: pnpm openapi:export
+        env:
+          OPENAPI_EXPORT_URL: http://127.0.0.1:3333/docs/json
+
+      - name: Validate OpenAPI exportado
+        run: pnpm openapi:validate:generated
+
+      - name: Instalar oasdiff
+        run: go install github.com/oasdiff/oasdiff@v1.14.0
+
+      - name: Breaking changes (vs baseline versionado)
+        run: |
+          "$HOME/go/bin/oasdiff" breaking apps/api/openapi/openapi.baseline.json apps/api/openapi/openapi.generated.json
+
+      - name: Gerar SDK (Orval)
+        run: pnpm codegen:orval

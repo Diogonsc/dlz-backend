@@ -13,7 +13,11 @@ export function validateEnv(config: Record<string, unknown>) {
     const formatted = result.error.issues
       .map((i) => `  • ${i.path.join('.')}: ${i.message}`)
       .join('\n');
-    throw new Error(`\n❌ Variáveis de ambiente inválidas:\n${formatted}\n`);
+    throw new Error(
+      `\n❌ Variáveis de ambiente inválidas:\n${formatted}\n\n` +
+        `Crie um arquivo \`.env\` na raiz do monorepo (copie de \`.env.example\`) ou em \`apps/api/\`. ` +
+        `JWT_SECRET e JWT_REFRESH_SECRET precisam ter pelo menos 32 caracteres.\n`,
+    );
   }
 
   return result.data;
@@ -115,6 +119,16 @@ export const appConfig = (env: AppEnv) => {
       jitterMs: parseNumber(env.PAYMENT_GATEWAY_HEALTH_CRON_JITTER_MS, 2000, 0),
       lockTtlMs: parseNumber(env.PAYMENT_GATEWAY_HEALTH_CRON_LOCK_TTL_MS, 240000, 1000),
       cacheTtlSeconds: parseNumber(env.PAYMENT_GATEWAY_HEALTH_CACHE_TTL_SECONDS, 300, 1),
+    },
+    storage: {
+      endpoint: (env.STORAGE_ENDPOINT ?? '').trim(),
+      bucket: (env.STORAGE_BUCKET ?? 'dlz-assets').trim(),
+      accessKeyId: (env.STORAGE_ACCESS_KEY ?? '').trim(),
+      secretAccessKey: (env.STORAGE_SECRET_KEY ?? '').trim(),
+      publicUrl: (env.STORAGE_PUBLIC_URL ?? '').replace(/\/$/, ''),
+      region: (env.STORAGE_REGION ?? 'auto').trim() || 'auto',
+      backend: (env.STORAGE_BACKEND ?? '').trim().toLowerCase(),
+      localDir: (env.LOCAL_STORAGE_DIR ?? '').trim(),
     },
   };
 };

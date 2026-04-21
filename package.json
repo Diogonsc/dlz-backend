@@ -4,9 +4,10 @@
   "private": true,
   "description": "DLZ Delivery Hub — Backend NestJS",
   "scripts": {
+    "postinstall": "pnpm --filter @dlz/prisma exec prisma generate",
     "dev": "pnpm --filter api dev",
     "build": "pnpm --filter api build",
-    "typecheck": "pnpm --filter api exec tsc --noEmit -p tsconfig.json --incremental false",
+    "typecheck": "pnpm --filter @dlz/prisma run build && pnpm --filter api exec tsc --noEmit -p tsconfig.json --incremental false",
     "tsc": "pnpm typecheck",
     "start": "pnpm --filter api start:prod",
     "lint": "pnpm -r lint",
@@ -20,7 +21,19 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f api",
-    "event-bus:replay-dlq": "pnpm --filter api event-bus:replay-dlq"
+    "event-bus:replay-dlq": "pnpm --filter api event-bus:replay-dlq",
+    "openapi:validate": "pnpm --filter api exec node ./scripts/validate-openapi.mjs",
+    "openapi:export": "node apps/api/scripts/export-openapi.mjs",
+    "openapi:validate:generated": "pnpm --filter api exec node ./scripts/validate-openapi.mjs openapi/openapi.generated.json",
+    "openapi:baseline:update": "node -e \"require('node:fs').copyFileSync('apps/api/openapi/openapi.generated.json','apps/api/openapi/openapi.baseline.json')\"",
+    "codegen:orval": "orval --config orval.config.cjs",
+    "codegen": "pnpm codegen:orval",
+    "openapi:contract:local": "pnpm openapi:export && pnpm openapi:validate:generated && pnpm codegen:orval"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.62.8",
+    "axios": "^1.7.9",
+    "orval": "^7.7.0"
   },
   "engines": {
     "node": ">=22.0.0",
