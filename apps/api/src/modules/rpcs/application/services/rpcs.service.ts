@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '@dlz/prisma';
 import { slugify } from '@dlz/shared';
 import { GetOrCreateOpenTabUseCase } from '../../../orders/application/use-cases/get-or-create-open-tab.use-case';
@@ -73,8 +72,7 @@ export class RpcsService {
       if (!tenant) {
         const compact = compactSlugKey(raw);
         if (compact.length >= 2) {
-          const rows = await this.prisma.$queryRaw<{ id: string }[]>(
-            Prisma.sql`
+          const rows = (await this.prisma.$queryRaw`
               SELECT t.id::text AS id
               FROM tenants t
               LEFT JOIN store_config sc ON sc.store_id = t.id
@@ -84,8 +82,7 @@ export class RpcsService {
                   OR regexp_replace(lower(trim(coalesce(sc.slug, ''))), '[^a-z0-9]', '', 'g') = ${compact}
                 )
               LIMIT 1
-            `,
-          );
+            `) as Array<{ id: string }>;
           const hit = rows[0]?.id;
           if (hit) tenant = { id: hit };
         }
