@@ -9,7 +9,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ── Development ───────────────────────────────────────────────────────────────
 FROM deps AS development
@@ -36,14 +36,17 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/packages/prisma/dist ./packages/prisma/dist
 COPY --from=builder /app/packages/prisma/src ./packages/prisma/src
+COPY --from=builder /app/packages/prisma/schema.prisma ./packages/prisma/schema.prisma
+COPY --from=builder /app/packages/prisma/migrations ./packages/prisma/migrations
 COPY --from=builder /app/packages/shared/src ./packages/shared/src
 
 # Prisma client gerado
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder /app/packages/prisma/node_modules ./packages/prisma/node_modules
 
