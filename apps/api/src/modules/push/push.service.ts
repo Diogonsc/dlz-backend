@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '@dlz/prisma';
-import webpush from 'web-push';
+import * as webpush from 'web-push';
 import type { SubscribePushDto, SendPushDto } from './push.dto';
 
 @Injectable()
