@@ -40,7 +40,7 @@ export const appConfig = (env: AppEnv) => {
       shortTtl: 1000,
       shortLimit: nodeEnv === 'production' ? 200 : 100,
       longTtl: 60000,
-      longLimit: nodeEnv === 'production' ? 100 : 1000,
+      longLimit: nodeEnv === 'production' ? 2000 : 1000,
       webhookTtl: 60000,
       webhookLimit: nodeEnv === 'production' ? 240 : 1200,
       replayTtl: 60000,
