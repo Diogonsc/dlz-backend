@@ -127,7 +127,7 @@ async function bootstrap() {
   }
 
   app.enableCors({
-    origin: config.get<string>('FRONTEND_URL', 'http://localhost:5173'),
+    origin: (config.get<string>('FRONTEND_URL', 'http://localhost:5173')).split(',').map(s => s.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
