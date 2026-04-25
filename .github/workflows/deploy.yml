@@ -9,7 +9,7 @@ permissions:
   packages: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +30,10 @@ jobs:
           push: true
           tags: ghcr.io/diogonsc/dlz-backend/dlz-api:latest
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy no servidor
         uses: appleboy/ssh-action@v1
         with:
@@ -40,6 +44,7 @@ jobs:
             cd /opt/dlz-backend
             docker compose -f docker-compose.prod.yml --env-file .env.production pull api
             docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps api
-            sleep 10
+            sleep 15
             /opt/dlz-backend/update-nginx.sh
             docker exec dlz_api /app/node_modules/.pnpm/prisma@6.19.3_typescript@5.9.3/node_modules/prisma/build/index.js migrate deploy --schema /app/packages/prisma/schema.prisma
+            curl -f https://api.dlz.app.br/health
