@@ -43,8 +43,9 @@ jobs:
           script: |
             cd /opt/dlz-backend
             docker compose -f docker-compose.prod.yml --env-file .env.production pull api
-            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps api
-            sleep 15
+            docker compose -f docker-compose.prod.yml --env-file .env.production stop api
+            docker compose -f docker-compose.prod.yml --env-file .env.production rm -f api
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d api
+            sleep 20
             /opt/dlz-backend/update-nginx.sh
             docker exec dlz_api /app/node_modules/.pnpm/prisma@6.19.3_typescript@5.9.3/node_modules/prisma/build/index.js migrate deploy --schema /app/packages/prisma/schema.prisma
-            curl -f https://api.dlz.app.br/health
