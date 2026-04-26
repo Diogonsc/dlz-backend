@@ -7,5 +7,6 @@ export class OrderItemDto {
   @IsNumber() price: number;
   @IsOptional() variations?: unknown[];
   @IsOptional() extras?: unknown[];
+  @IsOptional() @IsString() image?: string;
   @IsOptional() @IsString() notes?: string;
 }
