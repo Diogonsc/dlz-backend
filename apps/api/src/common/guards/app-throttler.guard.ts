@@ -14,12 +14,8 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     return `${name}:${ip}:${suffix}`
   }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Only throttle unauthenticated requests
-    const { req } = this.getRequestResponse(context)
-    if (req.headers?.authorization) {
-      return true
-    }
-    return super.canActivate(context)
+  async canActivate(_context: ExecutionContext): Promise<boolean> {
+    // Throttle disabled - using @SkipThrottle on specific routes
+    return true
   }
 }
