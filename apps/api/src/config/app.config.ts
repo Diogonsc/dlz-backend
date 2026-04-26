@@ -37,7 +37,7 @@ export const appConfig = (env: AppEnv) => {
       url: env.REDIS_URL,
     },
     throttler: {
-      shortTtl: 1000,
+      shortTtl: 60000,
       shortLimit: nodeEnv === 'production' ? 1000 : 100,
       longTtl: 60000,
       longLimit: nodeEnv === 'production' ? 5000 : 1000,
