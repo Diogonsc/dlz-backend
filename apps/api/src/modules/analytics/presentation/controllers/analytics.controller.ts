@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TenantId } from '../../../../common/decorators/current-user.decorator';
@@ -19,6 +20,7 @@ import {
 } from '../dtos/analytics-response.dto';
 
 @ApiTags('analytics')
+@SkipThrottle()
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}

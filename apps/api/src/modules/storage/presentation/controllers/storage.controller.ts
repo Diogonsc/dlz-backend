@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   BadRequestException,
   Controller,
@@ -34,6 +35,7 @@ import { StorageUploadResultResponseDto } from '../dtos/storage-upload-response.
 @ApiTags('storage')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('storage')
 export class StorageController {
   constructor(private readonly storageService: StorageService) {}

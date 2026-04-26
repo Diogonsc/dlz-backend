@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   BadRequestException,
   Body,
@@ -36,6 +37,7 @@ import {
 } from '../dtos/ifood-response.dto';
 
 @ApiTags('ifood')
+@SkipThrottle()
 @Controller('ifood')
 export class IfoodController {
   constructor(

@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -28,6 +29,7 @@ import { RestaurantTablePersistedResponseDto } from '../dtos/table-response.dto'
 @ApiTags('tables')
 @ApiAuthEndpoint()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('tables')
 export class TablesController {
   constructor(private readonly tablesService: TablesService) {}

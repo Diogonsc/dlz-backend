@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { CategoriesService, CreateCategoryDto, UpdateCategoryDto, ReorderDto } from './categories.service';
@@ -18,6 +19,7 @@ import {
 } from './dtos/category-response.dto';
 
 @ApiTags('categories')
+@SkipThrottle()
 @Controller()
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}

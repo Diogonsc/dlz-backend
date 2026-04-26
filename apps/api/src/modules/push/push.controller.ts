@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   Controller,
   Post,
@@ -24,6 +25,7 @@ import { PushBroadcastQueuedResponseDto, PushSubscriptionPersistedResponseDto } 
 @ApiTags('push')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('push')
 export class PushController {
   constructor(private readonly pushService: PushService) {}

@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TenantId } from '../../../../common/decorators/current-user.decorator';
@@ -19,6 +20,7 @@ import {
 } from '../dtos/coupon-response.dto';
 
 @ApiTags('coupons')
+@SkipThrottle()
 @Controller('coupons')
 export class CouponsController {
   constructor(private readonly couponsService: CouponsService) {}

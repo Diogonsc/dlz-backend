@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -13,6 +14,7 @@ import { DomainManageOperationResponseDto, DomainTenantStatusResponseDto } from 
 @ApiTags('domains')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('domains')
 export class DomainsController {
   constructor(private readonly domainsService: DomainsService) {}

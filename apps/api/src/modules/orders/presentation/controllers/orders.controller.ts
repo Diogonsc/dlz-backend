@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -25,6 +26,7 @@ import {
 } from '../dtos/order-response.dto';
 
 @ApiTags('orders')
+@SkipThrottle()
 @Controller()
 export class OrdersController {
   constructor(

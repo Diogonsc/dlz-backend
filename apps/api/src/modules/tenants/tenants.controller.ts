@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { TenantsService, CreateTenantDto, UpdateTenantDto } from './tenants.service';
@@ -18,6 +19,7 @@ import {
 @ApiTags('tenants')
 @ApiAuthEndpoint()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@SkipThrottle()
 @Controller('tenants')
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}

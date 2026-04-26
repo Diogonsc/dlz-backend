@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProductsService, CreateProductDto, UpdateProductDto } from './products.service';
@@ -18,6 +19,7 @@ import {
 } from './dtos/product-response.dto';
 
 @ApiTags('products')
+@SkipThrottle()
 @Controller()
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}

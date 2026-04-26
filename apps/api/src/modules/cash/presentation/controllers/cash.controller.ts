@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, TenantId } from '../../../../common/decorators/current-user.decorator';
@@ -21,6 +22,7 @@ import {
 @ApiTags('cash')
 @ApiAuthEndpoint()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('cash')
 export class CashController {
   constructor(private readonly cashService: CashService) {}

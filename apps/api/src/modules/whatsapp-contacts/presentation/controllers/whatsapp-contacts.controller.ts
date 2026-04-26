@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Post, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -25,6 +26,7 @@ import {
 } from '../dtos/whatsapp-contacts-response.dto';
 
 @ApiTags('whatsapp-contacts')
+@SkipThrottle()
 @Controller('whatsapp-contacts')
 export class WhatsappContactsController {
   constructor(private readonly service: WhatsappContactsService) {}

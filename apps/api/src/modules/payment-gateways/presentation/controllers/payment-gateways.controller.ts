@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, TenantId } from '../../../../common/decorators/current-user.decorator';
@@ -18,6 +19,7 @@ import {
 @ApiTags('payment-gateways')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('payment-gateways')
 export class PaymentGatewaysController {
   constructor(private readonly service: PaymentGatewaysService) {}

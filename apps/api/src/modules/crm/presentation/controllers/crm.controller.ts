@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TenantId } from '../../../../common/decorators/current-user.decorator';
@@ -17,6 +18,7 @@ import {
 @ApiTags('crm')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 @Controller('crm')
 export class CrmController {
   constructor(private readonly crmService: CrmService) {}
