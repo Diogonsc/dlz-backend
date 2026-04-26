@@ -85,6 +85,7 @@ export class RpcsController {
     return this.rpcsService.getPublicStoreConfig(storeId);
   }
 
+  @SkipThrottle()
   @Get('pix-config')
   @ApiPublicEndpoint()
   @ApiOperation({
