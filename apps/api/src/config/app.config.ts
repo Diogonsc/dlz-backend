@@ -38,9 +38,9 @@ export const appConfig = (env: AppEnv) => {
     },
     throttler: {
       shortTtl: 60000,
-      shortLimit: nodeEnv === 'production' ? 1000 : 100,
+      shortLimit: nodeEnv === 'production' ? 10000 : 100,
       longTtl: 60000,
-      longLimit: nodeEnv === 'production' ? 5000 : 1000,
+      longLimit: nodeEnv === 'production' ? 10000 : 1000,
       webhookTtl: 60000,
       webhookLimit: nodeEnv === 'production' ? 240 : 1200,
       replayTtl: 60000,
